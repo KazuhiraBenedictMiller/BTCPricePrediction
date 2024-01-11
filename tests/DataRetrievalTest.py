@@ -1,4 +1,4 @@
-import requests
+untitled.txtimport requests
 from datetime import datetime
 product_id = "BTC-USD"
 start = datetime.strptime("2023-06-01", "%Y-%m-%d")
