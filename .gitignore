@@ -4,3 +4,6 @@ lib/
 share/
 lib64
 pyvenv.cfg
+generated/
+etc/
+.virtual_documents/
