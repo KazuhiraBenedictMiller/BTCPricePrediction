@@ -5,10 +5,11 @@ import pandas as pd
 
 import requests
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import ntplib
 
+import os
 import sys
 sys.path.append("../scripts/")
 
@@ -28,13 +29,7 @@ def GetCurrentTime():
         return CurrentHour
 
     except:
-        print("Could not sync with time server.")
-
-args = {
-    'owner': 'admin',
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5)
-    }        
+        print("Could not sync with time server.")    
 
 def ConnectMariaDB():
     # Connect to MariaDB Platform
@@ -56,46 +51,76 @@ def ConnectMariaDB():
     
     return cur, conn
 
+def GetCurrentDatePreviousHour():
+#Times are ALWAYS UTC Aware
+    try:
+        client = ntplib.NTPClient()
+        response = client.request('pool.ntp.org')
+        todayprevhour = (datetime.fromtimestamp(response.tx_time, tz=timezone.utc) - timedelta(hours=1)).replace(minute=0, second=0).strftime("%Y-%m-%d %H:%M:%S")
+        return todayprevhour
 
+    except:
+        print("Could not sync with time server.")
 
-
-
-        newdata = CleanRawData(data)
-        LoadDataToMariaDB(cur, con, newdata)
-
-    elif lastdate == currentdate:
-        FetchAndLoadSingleRecord(cur, con, lastdate, currentdate)
-
-
-
-
-
-
-
-
+cur, con = ConnectMariaDB()        
+        
 def E():
-    cur, con = ConnectMariaDB()
-
     lastdate = datetime.strptime(ETLTools.FetchLastDate(cur), "%Y-%m-%d %H:%M:%S")
-    currentdate = datetime.strptime(ETLTools.GetCurrentDatePreviousHour(), "%Y-%m-%d %H:%M:%S")
+    currentdate = datetime.strptime(GetCurrentDatePreviousHour(), "%Y-%m-%d %H:%M:%S")
+        
     
     if lastdate < currentdate:
-        RawData = ETLTools.FetchData()
+        RawData = ETLTools.FetchData(lastdate, currentdate)
         RawData.to_parquet("./RawData.parquet")
-    
-    
-    
-    
+        
+    elif lastdate == currentdate:
+        RawData = ETLTools.FetchSingleRecord(cur, con, lastdate, currentdate)
+        RawData.to_parquet("./RawData.parquet")
+        
+    else:
+        print("Data already up to Date")
 
+        print(lastdate)
+        print(currentdate)
+        
+def T():
+    RawData = pd.read_parquet("./RawData.parquet")
+    CleanData = ETLTools.CleanRawData(RawData)
+    CleanData.to_parquet("./CleanData.parquet")
     
-E()
+def L():
+    CleanData = pd.read_parquet("./CleanData.parquet")
+    ETLTools.LoadDataToMariaDB(cur, con, CleanData)
+
+def Clean():
+    os.remove("./RawData.parquet")
+    os.remove("./CleanData.parquet")
     
+    
+    
+    
+args = {
+    'owner': 'admin',
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5)
+    }    
+
+if __name__ == "__main__":
+    E()
+    T()
+    L()
+    Clean()
     
     
     
     
     
 '''
+
+
+
+
+
 dag = DAG(
     'Hourly_ETL_Pipeline',
     default_args = args,

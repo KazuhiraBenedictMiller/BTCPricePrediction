@@ -5,10 +5,11 @@ import pandas as pd
 
 import requests
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import ntplib
 
+import os
 import sys
 sys.path.append("../scripts/")
 
@@ -28,13 +29,7 @@ def GetCurrentTime():
         return CurrentHour
 
     except:
-        print("Could not sync with time server.")
-
-args = {
-    'owner': 'admin',
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5)
-    }        
+        print("Could not sync with time server.")    
 
 def ConnectMariaDB():
     # Connect to MariaDB Platform
@@ -56,46 +51,46 @@ def ConnectMariaDB():
     
     return cur, conn
 
-
-
-
-
-        newdata = CleanRawData(data)
-        LoadDataToMariaDB(cur, con, newdata)
-
-    elif lastdate == currentdate:
-        FetchAndLoadSingleRecord(cur, con, lastdate, currentdate)
-
-
-
-
-
-
-
-
+cur, con = ConnectMariaDB()        
+        
 def E():
-    cur, con = ConnectMariaDB()
-
     lastdate = datetime.strptime(ETLTools.FetchLastDate(cur), "%Y-%m-%d %H:%M:%S")
     currentdate = datetime.strptime(ETLTools.GetCurrentDatePreviousHour(), "%Y-%m-%d %H:%M:%S")
+        
     
     if lastdate < currentdate:
-        RawData = ETLTools.FetchData()
+        RawData = ETLTools.FetchData(lastdate, currentdate)
         RawData.to_parquet("./RawData.parquet")
-    
-    
-    
-    
+        
+    elif lastdate == currentdate:
+        RawData = ETLTools.FetchSingleRecord(cur, con, lastdate, currentdate)
+        RawData.to_parquet("./RawData.parquet")
+        
+    else:
+        print("Data already up to Date")
 
+        print(lastdate)
+        print(currentdate)
+        
+def T():
+    RawData = pd.read_parquet("./RawData.parquet")
+    CleanData = ETLTools.CleanRawData(RawData)
+    CleanData.to_parquet("./CleanData.parquet")
     
-E()
-    
-    
-    
-    
-    
-    
-'''
+def L(cursor, connection):
+    CleanData = pd.read_parquet("./CleanData.parquet")
+    ETLTools.LoadDataToMariaDB(cursor, connection, CleanData)
+
+def Clean():
+    os.remove("./RawData.parquet")
+    os.remove("./CleanData.parquet")
+
+args = {
+    'owner': 'admin',
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5)
+    }    
+
 dag = DAG(
     'Hourly_ETL_Pipeline',
     default_args = args,
@@ -106,21 +101,33 @@ dag = DAG(
 
 Extract = PythonOperator(
     task_id = 'Extract',
-    python_callable = my_python_function,
+    python_callable = E,
     dag = dag,
 )
 
 Transform = PythonOperator(
-    task_id = 'Extract',
-    python_callable = my_python_function,
+    task_id = 'Transform',
+    python_callable = T,
     dag = dag,
 )
 
 Load = PythonOperator(
-    task_id = 'Extract',
-    python_callable = my_python_function,
+    task_id = 'Load',
+    python_callable = L,
+    op_args = [cur, c
     dag = dag,
 )
 
-Extract >> Tranform >> Load
-'''
+CleanFiles = PythonOperator(
+    task_id = 'CleanFiles',
+    python_callable = Clean,
+    dag = dag,
+)
+
+Extract >> Tranform >> Load >> CleanFiles
+
+if __name__ == "__main__":
+    E()
+    T()
+    L(cur, con)
+    Clean()

@@ -5,7 +5,7 @@ import pandas as pd
 
 import requests
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import ntplib
 
@@ -37,8 +37,8 @@ def FetchLastDate(cursor):
 #Extract
 def FetchData(start, end):
     product_id = "BTC-USD"
-    startdate = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
-    enddate = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+    startdate = start
+    enddate = end
     
     RawTempList = []
     
@@ -120,3 +120,39 @@ def CleanRawData(RawDF):
     CleanData.drop(["Open", "High", "Low", "Volume"], axis=1, inplace=True)
     
     return CleanData
+
+#Load
+def LoadDataToMariaDB(cursor, connection, DataDF):
+    for i in DataDF.values:
+        cursor.execute(
+        f'INSERT {secret.MariaDB_TableName} VALUES (?, ?)', 
+        (datetime(i[0].year, i[0].month, i[0].day, i[0].hour, i[0].minute, i[0].second), i[1]))
+    
+    connection.commit()
+    
+    #Check Inserted Data 
+    cursor.execute(f'SELECT * FROM {secret.MariaDB_TableName}')
+
+    checkdf = pd.DataFrame(data = [x for x in cur], columns = ["Date", "Close"])
+    print(checkdf)
+
+
+#Fetch Single Record
+def FetchSingleRecord(cursor, connection, startdate, enddate):
+    product_id = "BTC-USD"
+    
+    RawTempList = []
+
+    #Fetch
+
+    URL = f'https://api.exchange.coinbase.com/products/{product_id}/candles?start={startdate}&end={enddate}&granularity=3600'
+    r = requests.get(URL)
+    data = r.json()
+
+    RawTempList.extend(data)
+    
+    RawData = pd.DataFrame(RawTempList, columns = ["Date", "Open", "High", "Low", "Close", "Volume"])
+    RawData["Date"] = RawData["Date"].apply(lambda x: datetime.fromtimestamp(x, tz= timezone.utc))
+    RawData = RawData.sort_values(by=["Date"])
+
+    return RawData
