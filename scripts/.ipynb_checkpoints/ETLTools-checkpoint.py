@@ -10,7 +10,7 @@ import time
 import ntplib
 
 import sys
-sys.path.append("../scripts/")
+sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
 
 import secret
 
@@ -76,7 +76,7 @@ def CleanDuplicates(DF):
 #Check and Fill Missing Values
 def CheckFillMissing(DF):
     
-    Dates = list(DF["Date"])
+    Dates = [datetime.strptime(x[:-6], "%Y-%m-%d %H:%M:%S") for x in list(DF["Date"])] #list(DF["Date"])
     Missing = []
 
     testdate = Dates[0]
@@ -95,9 +95,9 @@ def CheckFillMissing(DF):
             
             hoursago = 2
             while not RecordToCopy:
-                RecordToCopy = DF[DF["Date"] == Missing[0] - timedelta(hours=x)]
+                RecordToCopy = DF[DF["Date"] == Missing[0] - timedelta(hours=hoursago)]
+                hoursago += 1
                 
-            
             templist.extend([x, RecordToCopy.iloc[0]["Close"], RecordToCopy.iloc[0]["Close"], RecordToCopy.iloc[0]["Close"], 
                              RecordToCopy.iloc[0]["Close"],RecordToCopy.iloc[0]["Volume"]])
             
@@ -120,6 +120,30 @@ def CleanRawData(RawDF):
     CleanData.drop(["Open", "High", "Low", "Volume"], axis=1, inplace=True)
     
     return CleanData
+
+#Load
+def LoadDataToMariaDB(cursor, connection, DataDF):
+    for i in DataDF.values:
+        Date = datetime.strptime(i[0][:-6], "%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+        f'INSERT {secret.MariaDB_TableName} VALUES (?, ?)', 
+        (datetime(Date.year, Date.month, Date.day, Date.hour, Date.minute, Date.second), i[1]))
+    
+    connection.commit()
+    
+    #Check Inserted Data 
+    cursor.execute(f'SELECT * FROM {secret.MariaDB_TableName}')
+
+    checkdf = pd.DataFrame(data = [x for x in cursor], columns = ["Date", "Close"])
+    print(checkdf)
+
+#Clean Single Record
+def CleanSingleRecord(RawDF):
+    #Drop Useless Columns
+    
+    RawDF.drop(["Open", "High", "Low", "Volume"], axis=1, inplace=True)
+    
+    return RawDF
 
 #Fetch Single Record
 def FetchSingleRecord(cursor, connection, startdate, enddate):

@@ -136,7 +136,7 @@ def CleanRawData(RawDF):
     
 #Load
 def LoadDataToMariaDB(cursor, connection, DataDF):
-    cur.execute(f'CREATE TABLE {secrets.MariaDB_TableName} (Date DATETIME PRIMARY KEY NOT NULL, Close DOUBLE)')
+    cur.execute(f'CREATE TABLE {secret.MariaDB_TableName} (Date DATETIME PRIMARY KEY NOT NULL, Close DOUBLE)')
     
     for i in DataDF.values:
         cursor.execute(
@@ -160,5 +160,3 @@ if __name__ == "__main__":
     data = FetchData(currentdate, numweeksago)
     newdata = CleanRawData(data)
     LoadDataToMariaDB(cur, con, newdata)
-    
-    

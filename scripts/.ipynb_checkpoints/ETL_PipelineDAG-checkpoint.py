@@ -11,7 +11,7 @@ import ntplib
 
 import os
 import sys
-sys.path.append("../scripts/")
+sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
 
 import secret
 import ETLTools
@@ -51,31 +51,22 @@ def ConnectMariaDB():
     
     return cur, conn
 
-def GetCurrentDatePreviousHour():
-#Times are ALWAYS UTC Aware
-    try:
-        client = ntplib.NTPClient()
-        response = client.request('pool.ntp.org')
-        todayprevhour = (datetime.fromtimestamp(response.tx_time, tz=timezone.utc) - timedelta(hours=1)).replace(minute=0, second=0).strftime("%Y-%m-%d %H:%M:%S")
-        return todayprevhour
-
-    except:
-        print("Could not sync with time server.")
-
-cur, con = ConnectMariaDB()        
+cur, con = ConnectMariaDB()      
+DAGTempFiles = "/home/Zero/Scrivania/btcpricepredictionvenv/tempfiles/"
         
 def E():
     lastdate = datetime.strptime(ETLTools.FetchLastDate(cur), "%Y-%m-%d %H:%M:%S")
-    currentdate = datetime.strptime(GetCurrentDatePreviousHour(), "%Y-%m-%d %H:%M:%S")
-        
+    currentdate = datetime.strptime(ETLTools.GetCurrentDatePreviousHour(), "%Y-%m-%d %H:%M:%S")
     
     if lastdate < currentdate:
         RawData = ETLTools.FetchData(lastdate, currentdate)
-        RawData.to_parquet("./RawData.parquet")
+        #RawData.to_parquet(DAGTempFiles + "RawData.parquet")
+        RawData.to_csv(DAGTempFiles + "RawData.csv", index=False)
         
     elif lastdate == currentdate:
         RawData = ETLTools.FetchSingleRecord(cur, con, lastdate, currentdate)
-        RawData.to_parquet("./RawData.parquet")
+        #RawData.to_parquet(DAGTempFiles + "RawData.parquet")
+        RawData.to_csv(DAGTempFiles + "RawData.csv", index=False)
         
     else:
         print("Data already up to Date")
@@ -84,68 +75,91 @@ def E():
         print(currentdate)
         
 def T():
-    RawData = pd.read_parquet("./RawData.parquet")
-    CleanData = ETLTools.CleanRawData(RawData)
-    CleanData.to_parquet("./CleanData.parquet")
+    #RawData = pd.read_parquet(DAGTempFiles + "RawData.parquet")
+    RawData = pd.read_csv(DAGTempFiles + "RawData.csv")
     
-def L():
-    CleanData = pd.read_parquet("./CleanData.parquet")
-    ETLTools.LoadDataToMariaDB(cur, con, CleanData)
+    if len(RawData.index) > 1:
+        CleanData = ETLTools.CleanRawData(RawData)
+        #CleanData.to_parquet(DAGTempFiles + "CleanData.parquet")
+        CleanData.to_csv(DAGTempFiles + "CleanData.csv", index=False)
+        
+    elif len(RawData.index) == 1:
+        CleanData = ETLTools.CleanSingleRecord(RawData)
+        #CleanData.to_parquet(DAGTempFiles + "CleanData.parquet")
+        CleanData.to_csv(DAGTempFiles + "CleanData.csv", index=False)
+        
+def L(cursor, connection):
+    #CleanData = pd.read_parquet(DAGTempFiles + "CleanData.parquet")
+    CleanData = pd.read_csv(DAGTempFiles + "CleanData.csv")
+    ETLTools.LoadDataToMariaDB(cursor, connection, CleanData)
 
 def Clean():
-    os.remove("./RawData.parquet")
-    os.remove("./CleanData.parquet")
-    
-    
-    
-    
+    os.remove(DAGTempFiles + "RawData.parquet")
+    os.remove(DAGTempFiles + "CleanData.parquet")
+
 args = {
     'owner': 'admin',
-    'retries': 2,
+    'retries': 0,
     'retry_delay': timedelta(minutes=5)
     }    
-
-if __name__ == "__main__":
-    E()
-    T()
-    L()
-    Clean()
-    
-    
-    
-    
-    
-'''
-
-
-
-
 
 dag = DAG(
     'Hourly_ETL_Pipeline',
     default_args = args,
     description = 'An ETL Pipeline for filling Local MariaDB',
-    schedule_interval = timedelta(hours=1),
-    start_date = GetCurrentTime()
+    schedule_interval = '@hourly',
+    start_date = datetime(2024, 1, 1),
+    catchup=False
     )
 
 Extract = PythonOperator(
     task_id = 'Extract',
-    python_callable = my_python_function,
+    python_callable = E,
     dag = dag,
 )
 
 Transform = PythonOperator(
-    task_id = 'Extract',
-    python_callable = my_python_function,
+    task_id = 'Transform',
+    python_callable = T,
     dag = dag,
 )
 
 Load = PythonOperator(
-    task_id = 'Extract',
-    python_callable = my_python_function,
+    task_id = 'Load',
+    python_callable = L,
+    op_args = [cur, con],
     dag = dag,
 )
 
-Extract >> Tranform >> Load
+Extract >> Transform >> Load
+  
+if __name__ == "__main__":
+    T()
+    
+'''
+    
+if __name__ == "__main__":
+    lastdate = datetime.strptime(ETLTools.FetchLastDate(cur), "%Y-%m-%d %H:%M:%S")
+    currentdate = datetime.strptime(ETLTools.GetCurrentDatePreviousHour(), "%Y-%m-%d %H:%M:%S")
+    
+    print(currentdate)
+    URL = f'https://api.exchange.coinbase.com/products/BTC-USD/candles?start={currentdate}&end={currentdate}&granularity=3600'
+    r = requests.get(URL)
+    data = r.json()
+    print(data)
+
+if __name__ == "__main__":
+    E()
+    T()
+    L(cur, con)
+    Clean()
+    
+CleanFiles = PythonOperator(
+    task_id = 'CleanFiles',
+    python_callable = Clean,
+    dag = dag,
+)
+
+#>> CleanFiles
+
 '''
