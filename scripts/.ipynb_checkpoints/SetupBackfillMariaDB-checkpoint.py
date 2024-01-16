@@ -136,7 +136,7 @@ def CleanRawData(RawDF):
     
 #Load
 def LoadDataToMariaDB(cursor, connection, DataDF):
-    cur.execute(f'CREATE TABLE {secret.MariaDB_TableName} (Date DATETIME PRIMARY KEY NOT NULL, Close DOUBLE)')
+    cur.execute(f'CREATE TABLE IF NOT EXISTS {secret.MariaDB_TableName} (Date DATETIME PRIMARY KEY NOT NULL, Close DOUBLE)')
     
     for i in DataDF.values:
         cursor.execute(
@@ -148,7 +148,7 @@ def LoadDataToMariaDB(cursor, connection, DataDF):
     #Check Inserted Data 
     cursor.execute(f'SELECT * FROM {secret.MariaDB_TableName}')
 
-    checkdf = pd.DataFrame(data = [x for x in cur], columns = ["Date", "Close"])
+    checkdf = pd.DataFrame(data = [x for x in cursor], columns = ["Date", "Close"])
     print(checkdf)
 
 if __name__ == "__main__":
