@@ -116,11 +116,6 @@ def LoadToMariaDB(cursor, connection):
 
     checkdf = pd.DataFrame(data = [x for x in cursor], columns = ["PredictionTargetDate", "Prediction"])
     print(checkdf)
-    
-def Clean():
-    os.remove(DAGTempFiles + "CleanDataSlice.csv")    
-    os.remove(DAGTempFiles + "Features.csv")
-    os.remove(DAGTempFiles + "Predictions.csv")
 
 args = {
     'owner': 'admin',
@@ -173,6 +168,11 @@ LoadPredictions = PythonOperator(
 CreateTable >> GetData >> GenerateFeatures >> Inference >> LoadPredictions 
 
 '''
+def Clean():
+    os.remove(DAGTempFiles + "CleanDataSlice.csv")    
+    os.remove(DAGTempFiles + "Features.csv")
+    os.remove(DAGTempFiles + "Predictions.csv")
+    
 CleanFiles = PythonOperator(
     task_id = 'CleanFiles',
     python_callable = Clean,
