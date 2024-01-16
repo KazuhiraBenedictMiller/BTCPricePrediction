@@ -94,8 +94,8 @@ def L(cursor, connection):
     ETLTools.LoadDataToMariaDB(cursor, connection, CleanData)
 
 def Clean():
-    os.remove(DAGTempFiles + "RawData.parquet")
-    os.remove(DAGTempFiles + "CleanData.parquet")
+    os.remove(DAGTempFiles + "RawData.csv")
+    os.remove(DAGTempFiles + "CleanData.csv")
 
 args = {
     'owner': 'admin',

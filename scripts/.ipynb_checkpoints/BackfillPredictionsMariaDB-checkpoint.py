@@ -18,6 +18,7 @@ import sys
 sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
 
 import secret
+import InferenceTools
 
 from sklearn.preprocessing import StandardScaler as SS
 from sklearn.metrics import mean_absolute_error as MAE
@@ -77,49 +78,64 @@ def GenerateFeatures(DataDF):
     #Generating Columns for FeaturesDF
     cols = [f'Close_{x}_Hours_Ago' for x in range(1, HoursTwoWeeks+1)]
     cols.reverse()
-    cols.append("ActualDate")
-    
+    cols.append("PredictionTargetDate")
     vals = []
     prices = list(DataDF["Close"])
     dates = list(DataDF["Date"])
-    for x in range(HoursTwoWeeks+1, len(prices)+1):
-        featurevals = [i for i in prices[x-HoursTwoWeeks-1:x]]
-        featurevals.append(dates[x-1])
+    
+    for x in range(HoursTwoWeeks, len(prices)):
+        featurevals = [i for i in prices[x+1-HoursTwoWeeks:x+1]]
+        featurevals.append(dates[x] + timedelta(hours=1))
         vals.append(featurevals)
-        
     FeaturesDF = pd.DataFrame(data=vals, columns=cols)
     
     return FeaturesDF
 
-def GetPredictions(Model, Scaler, FeaturesTargets):
-    Features = np.array(FeaturesTargets.drop(["ActualClose", "ActualDate"], axis=1, inplace=False))
-    Targets = np.array(FeaturesTargets["ActualClose"])
-    Dates = np.array(FeaturesTargets["ActualDate"])
+def GetPredictions(Model, Scaler, FeaturesAndDates):
+    Features = np.array(FeaturesAndDates.drop(["PredictionTargetDate"], axis=1, inplace=False))
+    Dates = FeaturesAndDates["PredictionTargetDate"]
 
     print(f"{Features.shape = }")
-    print(f"{Targets.shape = }")
-    print(f"{Date.shape = }")
+    print(f"{Dates.shape = }")
     
+    ScaledFeatures = Scaler.transform(Features)
+        
+    Preds = Model.predict(ScaledFeatures)
+    
+    return Preds, Dates
 
+def BackfillLoadPredictions(Preds, Dates, cursor, connection):    
+    MergedDF = pd.DataFrame(list(zip(Dates, Preds)), columns=["PredictionTargetDate", "Predictions"])
+
+    for i in MergedDF.values:
+        cursor.execute(
+        f'INSERT {secret.MariaDB_PredictionTableName} VALUES (?, ?)',  
+        (datetime(i[0].year, i[0].month, i[0].day, i[0].hour, i[0].minute, i[0].second), i[1]))
+    
+    connection.commit()
+    
+    #Check Inserted Data 
+    cursor.execute(f'SELECT * FROM {secret.MariaDB_PredictionTableName}')
+
+    checkdf = pd.DataFrame(data = [x for x in cursor], columns = ["PredictionTargetDate", "Prediction"])
+    print(checkdf)
+    
 if __name__ == "__main__":
     CheckAndCreateTable(cur, con)
     Model = LoadModel()
     Scaler = LoadScaler()
-
+    
     #Fix Number of which we actually want the Predictions, then Sum x Hours to generate Features, in our case one Week
     HoursAgo = 168
     nFeatures = 336
     CleanData = GetCleanData(cur, con)
-    CleanDataSlice = CleanData.loc[len(CleanData.index)-HoursAgo-nFeatures:]
-    print(CleanDataSlice)
-    Features = GenerateFeatures(CleanDataSlice)
-    print(Features)
-    Predictions = GetPredictions(Model, Scaler, Features)
-
     
+    CleanDataSlice = CleanData.loc[len(CleanData.index)-HoursAgo-nFeatures-1:]
     
-#Create table if it doesn't exist
-#Get Model
-#Get Data
-#Generate Training Set
-#Fill Table with Predictions
+    #print(CleanDataSlice)
+    Features = GenerateFeatures(CleanDataSlice)    
+    #print(Features)
+    
+    Predictions, PredictionsDates = GetPredictions(Model, Scaler, Features)
+    
+    BackfillLoadPredictions(Predictions, PredictionsDates, cur, con)
