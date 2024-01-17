@@ -223,7 +223,7 @@ CleanFiles = PythonOperator(
     dag = dag,
 )
 
-GetData >> FeaturesGeneration >> GenerateScaler >> Study >> FindBestModel >> CleanFiles
+GetData >> GenerateFeatures >> GenerateScaler >> Study >> FindBestModel >> CleanFiles
 
 '''
 if __name__ == "__main__":

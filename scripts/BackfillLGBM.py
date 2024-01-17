@@ -118,7 +118,9 @@ def Objective(T:optuna.trial.Trial) -> float:
     tss = TSS(n_splits=2)
     Scores = []
     
-    Scaler = joblib.load(ModelsDir + "Scaler.pkl")
+    xTrain, yTrain, xTest, yTest = ReTrainingTools.SplitFeatures(F)
+    
+    Scaler = joblib.load(ModelsDir + "ScalerX.pkl")
     ScaledxTrain = ScalexTrain(Scaler, xTrain)
     
     for trainIndex, valIndex in tss.split(ScaledxTrain):
@@ -145,9 +147,10 @@ def ScalexTrain(Scaler, xTrain):
     
     return ScaledxTrain
 
-def CreateAndFitModel(Best, Scaler ScaledxTrain, yTrain):
+def CreateAndFitModel(Best, Scaler, xTrain, yTrain, xTest, yTest):
     Model = lgb.LGBMRegressor(**Best)
     
+    ScaledxTrain = Scaler.fit_transform(xTrain)
     Model.fit(ScaledxTrain, yTrain)
     
     Preds = Model.predict(Scaler.transform(xTest))
@@ -157,21 +160,21 @@ def CreateAndFitModel(Best, Scaler ScaledxTrain, yTrain):
     
     return Model
 
-
 if __name__ == "__main__":
     CleanData = GetCleanData(cur, con)
     Features = GenerateFeaturesAndTargets(CleanData)
     xTrain, yTrain, xTest, yTest = SplitFeatures(Features)
     
     Scaler = ScaleFeatures(xTrain)
-    joblib.dump(Scaler, ModelsDir + "Scaler.pkl")
+    joblib.dump(Scaler, ModelsDir + "ScalerX.pkl")
     
     Study = optuna.create_study(direction="minimize")
     Study.optimize(Objective, n_trials=5)
     BestParams = Study.best_trial.params
 
-    Model = CreateAndFitModel(BestParams, , yTrain)
-    
+    Model = CreateAndFitModel(BestParams, Scaler, xTrain, yTrain, xTest, yTest)
+    joblib.dump(Scaler, ModelsDir + "ModelX.pkl")
+
     
 
     
