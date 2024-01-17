@@ -193,9 +193,15 @@ def FindBestModel(Path, xTest, yTest):
     print(BestModelVersion)
     
     #Copying Model and Scaler into Production
-    shutil.copy(src=Path + "ModelVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "BestModel_ModelVersion" + BestModelVersion + ".pkl")
-    shutil.copy(src=Path + "ScalerVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "BestModel_ScalerVersion" + BestModelVersion + ".pkl")
+    #shutil.copy(src=Path + "ModelVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "BestModel_ModelVersion" + BestModelVersion + ".pkl")
+    #shutil.copy(src=Path + "ScalerVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "BestModel_ScalerVersion" + BestModelVersion + ".pkl")
     
+    os.remove(ModelsDir + "Model.pkl")
+    os.remove(ModelsDir + "Scaler.pkl")    
+    
+    shutil.copy(src=Path + "ModelVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "Model.pkl")
+    shutil.copy(src=Path + "ScalerVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "Scaler.pkl")
+
 if __name__ == "__main__":
     
     data = GetCleanData(cur, con)

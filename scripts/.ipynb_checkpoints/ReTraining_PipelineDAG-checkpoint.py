@@ -181,7 +181,7 @@ dag = DAG(
     'Weekly_ReTraining_Pipeline',
     default_args = args,
     description = 'A Model ReTraining Pipeline that Every Week Generates a new model and Finds the Best One',
-    schedule_interval = '30 * * * *', #30 23 * * 0 #'@hourly',
+    schedule_interval = '30 23 * * 0' #'@hourly',
     start_date = datetime(2024, 1, 1, 0, 30, 0),
     catchup=False
     )
