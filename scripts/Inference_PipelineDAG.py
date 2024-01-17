@@ -54,7 +54,7 @@ def ConnectMariaDB():
     return cur, conn
 
 cur, con = ConnectMariaDB()
-ModelsDir= "/home/Zero/Scrivania/btcpricepredictionvenv/model/"
+ModelsDir = "/home/Zero/Scrivania/btcpricepredictionvenv/model/"
 DAGTempFiles = "/home/Zero/Scrivania/btcpricepredictionvenv/tempfiles/"
 
 def CheckAndCreateTable(cursor, connection):
@@ -116,6 +116,11 @@ def LoadToMariaDB(cursor, connection):
 
     checkdf = pd.DataFrame(data = [x for x in cursor], columns = ["PredictionTargetDate", "Prediction"])
     print(checkdf)
+    
+def Clean():
+    os.remove(DAGTempFiles + "CleanDataSlice.csv")    
+    os.remove(DAGTempFiles + "Features.csv")
+    os.remove(DAGTempFiles + "Predictions.csv")
 
 args = {
     'owner': 'admin',
@@ -164,14 +169,6 @@ LoadPredictions = PythonOperator(
     op_args = [cur, con],
     dag = dag,
 )
-
-CreateTable >> GetData >> GenerateFeatures >> Inference >> LoadPredictions 
-
-'''
-def Clean():
-    os.remove(DAGTempFiles + "CleanDataSlice.csv")    
-    os.remove(DAGTempFiles + "Features.csv")
-    os.remove(DAGTempFiles + "Predictions.csv")
     
 CleanFiles = PythonOperator(
     task_id = 'CleanFiles',
@@ -179,20 +176,4 @@ CleanFiles = PythonOperator(
     dag = dag,
 )
 
->> CleanFiles
-
-if __name__ == "__main__":    
-    CheckAndCreateTable(cur, con)
-    GetCleanData(cur, con)
-    GenerateFeaturesFromSliceData()
-    GeneratePredictions()
-    
-    lastdate = datetime.strptime(InferenceTools.GetLatestPrediciton(cur, con), "%Y-%m-%d %H:%M:%S")
-    currentdate = datetime.strptime(InferenceTools.GetCurrentDate(), "%Y-%m-%d %H:%M:%S")
-    print(lastdate)
-    print(currentdate)
-    
-'''
-
-    
-    
+CreateTable >> GetData >> GenerateFeatures >> Inference >> LoadPredictions >> CleanFiles

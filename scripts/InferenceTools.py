@@ -17,7 +17,7 @@ sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
 import secret
 import InferenceTools
 
-ModelsDir= "/home/Zero/Scrivania/btcpricepredictionvenv/model/"
+ModelsDir = "/home/Zero/Scrivania/btcpricepredictionvenv/model/"
 
 def LoadModel():
     return joblib.load(ModelsDir + "Model.pkl")
