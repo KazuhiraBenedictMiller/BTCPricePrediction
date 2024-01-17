@@ -118,9 +118,7 @@ def Objective(T:optuna.trial.Trial) -> float:
     tss = TSS(n_splits=2)
     Scores = []
     
-    xTrain, yTrain, xTest, yTest = ReTrainingTools.SplitFeatures(F)
-    
-    Scaler = joblib.load(ModelsDir + "ScalerX.pkl")
+    Scaler = joblib.load(ModelsDir + "Scaler.pkl")
     ScaledxTrain = ScalexTrain(Scaler, xTrain)
     
     for trainIndex, valIndex in tss.split(ScaledxTrain):
@@ -166,14 +164,14 @@ if __name__ == "__main__":
     xTrain, yTrain, xTest, yTest = SplitFeatures(Features)
     
     Scaler = ScaleFeatures(xTrain)
-    joblib.dump(Scaler, ModelsDir + "ScalerX.pkl")
+    joblib.dump(Scaler, ModelsDir + "Scaler.pkl")
     
     Study = optuna.create_study(direction="minimize")
     Study.optimize(Objective, n_trials=5)
     BestParams = Study.best_trial.params
 
     Model = CreateAndFitModel(BestParams, Scaler, xTrain, yTrain, xTest, yTest)
-    joblib.dump(Scaler, ModelsDir + "ModelX.pkl")
+    joblib.dump(Scaler, ModelsDir + "Model.pkl")
 
     
 
