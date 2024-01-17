@@ -27,6 +27,10 @@ sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
 import secret
 import ReTrainingTools
 
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
+
 def GetCurrentTime():
 #Times are ALWAYS UTC Aware
     try:
@@ -145,12 +149,12 @@ def OptunaStudy():
     Study = optuna.create_study(direction="minimize")
     Study.optimize(Objective, n_trials=5)
     BestParams = Study.best_trial.params
-    print(BestParams)
     
     BestModel = ReTrainingTools.CreateAndFitModel(BestParams, ScaledxTrain, yTrain)
     
     Preds = BestModel.predict(Scaler.transform(xTest))
     testMae = MAE(yTest, Preds)
+    
     print(f"{testMae = :.4f}")
     
     joblib.dump(BestModel, ModelStore + "ModelVersion" + str(ModelVersion) + ".pkl")
@@ -167,18 +171,6 @@ def Clean():
     os.remove(DAGTempFiles + "TrainingData.csv")    
     os.remove(DAGTempFiles + "TrainingFeatures.csv")
     
-    
-    
-    
-if __name__ == "__main__":
-    GetTrainingData(cur, con)
-    FeaturesGeneration()
-    ScalerGeneration()
-    OptunaStudy()
-    FindPerformingModel()
-    
-
-'''
 args = {
     'owner': 'admin',
     'retries': 2,
@@ -232,4 +224,12 @@ CleanFiles = PythonOperator(
 )
 
 GetData >> FeaturesGeneration >> GenerateScaler >> Study >> FindBestModel >> CleanFiles
+
+'''
+if __name__ == "__main__":
+    GetTrainingData(cur, con)
+    FeaturesGeneration()
+    ScalerGeneration()
+    OptunaStudy()
+    FindPerformingModel()
 '''

@@ -27,6 +27,10 @@ sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
 import secret
 import ReTrainingTools
 
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
+
 def GetCurrentTime():
 #Times are ALWAYS UTC Aware
     try:
