@@ -19,6 +19,7 @@ import optuna
 
 import joblib
 
+import shutil
 import os
 import sys
 sys.path.append("/home/Zero/Scrivania/btcpricepredictionvenv/scripts/")
@@ -65,7 +66,7 @@ ModelStore = "/home/Zero/Scrivania/btcpricepredictionvenv/modelstore/"
 
 ModelPrefix = "ModelVersion"
 _, _, files = next(os.walk(ModelStore))
-file_count = len(files)
+file_count = len(files) // 2
 
 ModelVersion = file_count
 
@@ -156,7 +157,7 @@ def Objective(T:optuna.trial.Trial) -> float:
     return np.array(Scores).mean()
 
 def CreateAndFitModel(Best, xTrain, yTrain):
-    Model = lgb.LGBMRegressor(**BestParams)
+    Model = lgb.LGBMRegressor(**Best)
     
     Model.fit(ScaledxTrain, yTrain)
     
@@ -166,6 +167,44 @@ def CreateAndFitModel(Best, xTrain, yTrain):
     
     return Model
 
+def FindBestModel(Path, xTest, yTest):
+    ModelNames = []
+    
+    for x in os.listdir(Path):
+        if x.endswith(".pkl") and "Model" in x:
+            ModelNames.append(x)
+    
+    ModelMAEs = pd.DataFrame(columns=["ModelVersion", "MAE"])
+    
+    print(ModelNames)
+    
+    for v in ModelNames:
+        Version = v[-5]
+        
+        ModelPath = Path + "ModelVersion" + Version + ".pkl"
+        ScalerPath = Path + "ScalerVersion" + Version + ".pkl"
+        
+        Model = joblib.load(ModelPath)
+        Scaler = joblib.load(ScalerPath)
+        
+        Preds = Model.predict(Scaler.transform(xTest))
+        testMae = MAE(yTest, Preds)
+        print(f"{testMae = :.4f}")
+        
+        ModelMAEs.loc[len(ModelMAEs)] = [Version,testMae]
+        
+        print(Model)
+    
+    print(ModelMAEs)
+    BestModel = ModelMAEs[ModelMAEs["MAE"] == min(list(ModelMAEs["MAE"]))]
+    BestModelVersion = BestModel["ModelVersion"].values[0]
+    print(BestModelVersion)
+    
+    #Copying Model and Scaler into Production
+    shutil.copy(src=Path + "ModelVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "BestModel_ModelVersion" + BestModelVersion + ".pkl")
+    shutil.copy(src=Path + "ScalerVersion" + BestModelVersion + ".pkl", dst=ModelsDir + "BestModel_ScalerVersion" + BestModelVersion + ".pkl")
+    
+    
 if __name__ == "__main__":
     
     data = GetCleanData(cur, con)
@@ -191,4 +230,4 @@ if __name__ == "__main__":
     
     joblib.dump(BestModel, ModelStore + "ModelVersion" + str(ModelVersion) + ".pkl")
     
-
+    FindBestModel(ModelStore, xTest, yTest)
