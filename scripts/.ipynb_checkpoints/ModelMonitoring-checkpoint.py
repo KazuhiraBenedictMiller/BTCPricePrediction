@@ -145,7 +145,7 @@ with st.spinner("Plotting Mean Absolute Error (MAE) Hourly Aggregate"):
     
     AggregateMAE_Chart = figure(title="BTC-USD Aggreate Hourly MAE Chart", x_axis_label='Hour', y_axis_label='MAE', width=1300)
     
-    AggregateMAE_Chart.vbar(AggregateMAE["Hour"], AggregateMAE["MAE"], legend_label="Aggregate Hourly MAE", width=0.5, fill_color="blue")
+    AggregateMAE_Chart.vbar(x=AggregateMAE["Hour"], top=AggregateMAE["MAE"], legend_label="Aggregate Hourly MAE", width=0.5, fill_color="blue")
 
     st.bokeh_chart(AggregateMAE_Chart, use_container_width=True)
     
