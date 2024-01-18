@@ -172,8 +172,3 @@ if __name__ == "__main__":
 
     Model = CreateAndFitModel(BestParams, Scaler, xTrain, yTrain, xTest, yTest)
     joblib.dump(Scaler, ModelsDir + "Model.pkl")
-
-    
-
-    
-
