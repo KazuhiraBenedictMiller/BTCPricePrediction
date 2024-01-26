@@ -37,8 +37,6 @@ Lastly, the Pipeline, Computes an Error Measurement for every Model in the Store
 
 # FlowCharts
 
-<hr>
-
 <img
   src="./ETLPipeline.png">
 
