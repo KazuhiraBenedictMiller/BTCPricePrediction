@@ -42,12 +42,12 @@ Lastly, the Pipeline, Computes an Error Measurement for every Model in the Store
 <img
   src="./ETLPipeline.png">
 
-## Inference Pipeline
+<hr>
 
 <img
   src="./InferencePipeline.png">
-  
-## Training Pipeline
+
+<hr>
 ```mermaid
 graph LR
 
