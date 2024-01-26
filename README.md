@@ -47,24 +47,8 @@ Lastly, the Pipeline, Computes an Error Measurement for every Model in the Store
 
 <hr>
 
-```mermaid
-graph LR
-
-AA{Apache Airflow}
-MDB{MariaDB Storage}
-MS{Model Store}
-PROD[Production]
-TP(Training Pipeline)
-T((Training))
-NM((New Model))
-BM((Best Model))
-D[Transformed Data]
-
-AA --Weekly Schedule--> TP --Fetches Data--> MDB
-MDB --Returns Data--> D --> TP
-TP --> T --Build New Model --> NM --> MS
-MS --Finds Best Model--> BM --> PROD
-```
+<img
+  src="./TrainingPipeline.png">
 
 # Moving Online
 
