@@ -42,35 +42,11 @@ Lastly, the Pipeline, Computes an Error Measurement for every Model in the Store
 <img
   src="./ETLPipeline.png">
 
-```mermaid
-graph LR
-
-AA{Apache Airflow}
-MDB{MariaDB Storage}
-CA((Coinbase API))
-FP(Feature Pipeline)
-D[Transformed Data]
-
-AA --Hourly Schedule--> FP --Request--> CA --Raw Data--> FP
-FP --> D
-D --> MDB
-```
 ## Inference Pipeline
-```mermaid
-graph LR
 
-AA{Apache Airflow}
-MDB{MariaDB Storage}
-IP(Inference Pipeline)
-I((Inference))
-D[Transformed Data]
-P[Predictions]
-
-AA --Hourly Schedule--> IP --Fetches Data--> MDB
-MDB --Returns Data--> D
-D --> I --> P
-P --> MDB
-```
+<img
+  src="./InferencePipeline.png">
+  
 ## Training Pipeline
 ```mermaid
 graph LR
