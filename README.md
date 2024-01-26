@@ -40,7 +40,7 @@ Lastly, the Pipeline, Computes an Error Measurement for every Model in the Store
 ## Feature Pipeline
 
 <img
-  src="/pics/ETLPipeline.png">
+  src="./ETLPipeline.png">
 
 ```mermaid
 graph LR
